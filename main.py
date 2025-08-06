@@ -2,7 +2,7 @@
 import streamlit as st
 import pytesseract
 import spacy
-from pdf2image import convert_from_path
+from pdf2image import convert_from_path, convert_from_bytes
 from PyPDF2 import PdfReader
 import tempfile
 import re
@@ -31,12 +31,18 @@ def extract_text_from_pdf(file):
     return text
 
 def extract_with_ocr(file):
+    """Fallback OCR extraction for PDFs that lack embedded text."""
+    # ensure we're reading from the start of the file-like object
+    file.seek(0)
     with tempfile.TemporaryDirectory() as path:
-        images = convert_from_path(file, output_folder=path)
+        # convert_from_path expects a file path, but Streamlit provides a
+        # file-like object. Use convert_from_bytes to handle the uploaded
+        # file's bytes directly.
+        images = convert_from_bytes(file.read(), output_folder=path)
         text = ""
         for image in images:
             text += pytesseract.image_to_string(image)
-        return text
+    return text
 
 def clean_amount(val):
     try:
